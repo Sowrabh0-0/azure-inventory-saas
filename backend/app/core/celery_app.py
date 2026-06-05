@@ -4,7 +4,12 @@ from celery import Celery
 
 from app.core.config import settings
 
-celery_app = Celery("azure_inventory", broker=settings.redis_url, backend=settings.redis_url)
+celery_app = Celery(
+    "azure_inventory",
+    broker=settings.redis_url,
+    backend=settings.redis_url,
+    include=["app.tasks.sync"],
+)
 celery_app.conf.update(
     timezone="UTC",
     task_serializer="json",
@@ -17,4 +22,3 @@ celery_app.conf.update(
         }
     },
 )
-
