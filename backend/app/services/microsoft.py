@@ -3,6 +3,7 @@ from __future__ import annotations
 from urllib.parse import urlencode
 
 import httpx
+from fastapi import HTTPException
 
 from app.core.config import settings
 
@@ -61,6 +62,8 @@ class MicrosoftOAuthService:
         }
         async with httpx.AsyncClient(timeout=30) as client:
             response = await client.post(token_url, data=data)
+            if response.status_code >= 400:
+                raise HTTPException(status_code=response.status_code, detail=response.json())
             response.raise_for_status()
             return response.json()
 
