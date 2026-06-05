@@ -19,7 +19,7 @@ class Settings(BaseSettings):
 
     microsoft_client_id: str
     microsoft_client_secret: str
-    microsoft_authority: str = "https://login.microsoftonline.com/organizations"
+    microsoft_authority: str = "https://login.microsoftonline.com/common"
     microsoft_redirect_uri: str = "http://localhost/api/auth/callback"
     microsoft_audience: str
     microsoft_allowed_issuers: list[str] = Field(default_factory=list)
@@ -43,4 +43,3 @@ def get_settings() -> Settings:
 
 
 settings = get_settings()
-
