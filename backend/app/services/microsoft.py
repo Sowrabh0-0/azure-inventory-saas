@@ -15,7 +15,7 @@ LOGIN_SCOPES = [
     "User.Read",
 ]
 
-ARM_SCOPES = ["https://management.azure.com/user_impersonation"]
+ARM_SCOPES = ["https://management.azure.com//user_impersonation"]
 
 
 class MicrosoftOAuthService:
