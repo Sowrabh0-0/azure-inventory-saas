@@ -3,11 +3,12 @@ from __future__ import annotations
 import uuid
 import logging
 
+from cryptography.fernet import InvalidToken
 from fastapi import HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.security import decrypt_secret
+from app.core.security import decrypt_secret, encrypt_secret
 from app.models.identity import OAuthConnection, Tenant
 from app.repositories.azure import AzureInventoryRepository
 from app.services.microsoft import ARM_SCOPES, AzureArmService, MicrosoftOAuthService
@@ -38,7 +39,15 @@ class InventorySyncService:
         )
         if connection is None:
             return
-        refresh_token = decrypt_secret(connection.encrypted_refresh_token)
+        try:
+            refresh_token = decrypt_secret(connection.encrypted_refresh_token)
+        except InvalidToken:
+            logger.error(
+                "Skipping ARM sync for Azure tenant %s because the stored refresh token cannot be decrypted. "
+                "The user must sign in again.",
+                azure_tenant_id,
+            )
+            return
         try:
             tokens = await self.oauth.refresh_access_token(
                 refresh_token,
@@ -50,7 +59,7 @@ class InventorySyncService:
             return
         access_token = tokens["access_token"]
         if tokens.get("refresh_token"):
-            connection.encrypted_refresh_token = tokens["refresh_token"]
+            connection.encrypted_refresh_token = encrypt_secret(tokens["refresh_token"])
 
         for subscription_item in await self.arm.subscriptions(access_token):
             subscription = await self.repo.upsert_subscription(tenant_id, subscription_item)
