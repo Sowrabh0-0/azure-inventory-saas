@@ -63,6 +63,27 @@ docker compose ps
 
 ## 5. Test
 
+For Microsoft OAuth dev testing, use a localhost tunnel:
+
+```powershell
+ssh -L 8080:localhost:80 azureuser@PUBLIC_IP
+```
+
+Open:
+
+```text
+http://localhost:8080
+```
+
+Configure these redirect URIs in the app registration:
+
+```text
+http://localhost/auth/callback
+http://localhost:8080/auth/callback
+```
+
+Public HTTP callbacks are not accepted by Microsoft. Use HTTPS for direct public browser access.
+
 ```bash
 curl http://PUBLIC_IP/healthz
 ```

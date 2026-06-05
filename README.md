@@ -31,6 +31,8 @@ docker compose exec backend alembic upgrade head
 
 Open `http://localhost`.
 
+On login, leave Tenant ID blank for normal multi-tenant discovery, or enter a specific Entra tenant ID to force a work/school or guest-directory sign-in. This is useful when the same email address also has a personal Microsoft account.
+
 ## Azure VM Dev Deploy
 
 ```bash
@@ -52,17 +54,19 @@ If you already ran Terraform and only want to copy the VM IP into `.env`:
 .\scripts\update-env-from-terraform.ps1
 ```
 
-If password SSH makes `scp` inconvenient, deploy through Azure VM Run Command:
+For dev OAuth testing through the VM, use an SSH tunnel and browse through localhost:
 
 ```powershell
-.\scripts\deploy-via-az-run-command.ps1
+ssh -L 8080:localhost:80 azureuser@PUBLIC_IP
 ```
 
-The script prints the redirect URI you must add to the Entra app registration, for example:
+Then open:
 
 ```text
-http://PUBLIC_IP/auth/callback
+http://localhost:8080
 ```
+
+Microsoft allows plain HTTP redirect URIs only for localhost. A public VM IP callback such as `http://PUBLIC_IP/auth/callback` is rejected by Microsoft. For direct public access, configure HTTPS and use an HTTPS redirect URI.
 
 The dev VM uses password-based SSH. The password is in ignored `infra/envs/dev/terraform.tfvars` as `admin_password`.
 
@@ -77,10 +81,11 @@ docker compose up -d --build
 docker compose exec backend alembic upgrade head
 ```
 
-Set the Entra app redirect URI to:
+For tunnel-based dev testing, set Entra redirect URIs to:
 
 ```text
-http://PUBLIC_IP/auth/callback
+http://localhost/auth/callback
+http://localhost:8080/auth/callback
 ```
 
 For HTTPS testing, add certificates under `nginx/certs` and extend `nginx/nginx.conf`.
@@ -90,12 +95,22 @@ For HTTPS testing, add certificates under `nginx/certs` and extend `nginx/nginx.
 Use a multi-tenant app registration and configure:
 
 - Platform: Web
-- Redirect URI: `http://localhost/auth/callback` or `http://PUBLIC_IP/auth/callback`
+- Redirect URI: `http://localhost/auth/callback`, `http://localhost:8080/auth/callback`, or an HTTPS public URI
 - Allow public client flows: no
 - Client secret: create and place in `.env`
-- API permissions: `openid`, `profile`, `email`, `offline_access`, `User.Read`, `https://management.azure.com/user_impersonation`
+- API permissions: `openid`, `profile`, `email`, `offline_access`, `User.Read`, Azure Resource Manager `user_impersonation`
 
 Admin consent may be required depending on tenant policy.
+
+## Inventory Sync
+
+After successful login, the backend automatically queues a Celery sync for the signed-in tenant. The dashboard may show zeroes for a few seconds while the worker discovers subscriptions and resources.
+
+Manual sync is still available for troubleshooting:
+
+```bash
+docker compose exec -T celery-worker celery -A app.core.celery_app.celery_app call app.tasks.sync.sync_all_tenants
+```
 
 ## Tenant Isolation
 
