@@ -53,7 +53,7 @@ services:
   celery-worker:
     build:
       context: ./backend
-    command: celery -A app.core.celery_app.celery_app worker --loglevel=INFO
+    command: celery -A app.core.celery_app.celery_app worker --loglevel=INFO --pool=solo --concurrency=1
     environment:
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       REDIS_URL: redis://redis:6379/0
@@ -109,4 +109,3 @@ services:
 volumes:
   postgres-data:
   redis-data:
-

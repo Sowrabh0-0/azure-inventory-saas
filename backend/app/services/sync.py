@@ -8,7 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import decrypt_secret
-from app.models.identity import OAuthConnection
+from app.models.identity import OAuthConnection, Tenant
 from app.repositories.azure import AzureInventoryRepository
 from app.services.microsoft import ARM_SCOPES, AzureArmService, MicrosoftOAuthService
 
@@ -23,8 +23,14 @@ class InventorySyncService:
         self.repo = AzureInventoryRepository(session)
 
     async def sync_tenant(self, tenant_id: uuid.UUID) -> None:
-        if str(tenant_id) == "9188040d-6c67-4c5b-b112-36a304b66dad":
-            logger.warning("Skipping ARM sync for Microsoft consumer tenant %s", tenant_id)
+        tenant = await self.session.get(Tenant, tenant_id)
+        if tenant is None:
+            logger.warning("Skipping ARM sync because tenant %s no longer exists", tenant_id)
+            return
+
+        azure_tenant_id = tenant.azure_tenant_id
+        if azure_tenant_id == "9188040d-6c67-4c5b-b112-36a304b66dad":
+            logger.warning("Skipping ARM sync for Microsoft consumer tenant %s", azure_tenant_id)
             return
 
         connection = await self.session.scalar(
@@ -37,10 +43,10 @@ class InventorySyncService:
             tokens = await self.oauth.refresh_access_token(
                 refresh_token,
                 ARM_SCOPES,
-                tenant_id=str(tenant_id),
+                tenant_id=azure_tenant_id,
             )
         except HTTPException as exc:
-            logger.error("ARM token refresh failed for tenant %s: %s", tenant_id, exc.detail)
+            logger.error("ARM token refresh failed for Azure tenant %s: %s", azure_tenant_id, exc.detail)
             return
         access_token = tokens["access_token"]
         if tokens.get("refresh_token"):
