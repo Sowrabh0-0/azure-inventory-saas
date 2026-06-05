@@ -12,7 +12,7 @@ LOGIN_SCOPES = [
     "email",
     "offline_access",
     "User.Read",
-    "https://management.azure.com/user_impersonation",
+    "https://management.azure.com//user_impersonation",
 ]
 
 
