@@ -19,6 +19,11 @@ ARM_SCOPES = ["https://management.azure.com//user_impersonation"]
 
 
 class MicrosoftOAuthService:
+    def login_scopes(self, tenant_id: str | None = None) -> list[str]:
+        if tenant_id:
+            return [*LOGIN_SCOPES, *ARM_SCOPES]
+        return LOGIN_SCOPES
+
     def authority_for_tenant(self, tenant_id: str | None = None) -> str:
         if tenant_id:
             return f"https://login.microsoftonline.com/{tenant_id}"
@@ -26,13 +31,14 @@ class MicrosoftOAuthService:
 
     def authorization_url(self, state: str, code_challenge: str, tenant_id: str | None = None) -> str:
         authority = self.authority_for_tenant(tenant_id)
+        scopes = self.login_scopes(tenant_id)
         query = urlencode(
             {
                 "client_id": settings.microsoft_client_id,
                 "response_type": "code",
                 "redirect_uri": settings.microsoft_redirect_uri,
                 "response_mode": "query",
-                "scope": " ".join(LOGIN_SCOPES),
+                "scope": " ".join(scopes),
                 "state": state,
                 "code_challenge": code_challenge,
                 "code_challenge_method": "S256",
@@ -43,6 +49,7 @@ class MicrosoftOAuthService:
 
     async def exchange_code(self, code: str, code_verifier: str, tenant_id: str | None = None) -> dict:
         token_url = f"{self.authority_for_tenant(tenant_id)}/oauth2/v2.0/token"
+        scopes = self.login_scopes(tenant_id)
         data = {
             "client_id": settings.microsoft_client_id,
             "client_secret": settings.microsoft_client_secret,
@@ -50,7 +57,7 @@ class MicrosoftOAuthService:
             "code": code,
             "redirect_uri": settings.microsoft_redirect_uri,
             "code_verifier": code_verifier,
-            "scope": " ".join(LOGIN_SCOPES),
+            "scope": " ".join(scopes),
         }
         async with httpx.AsyncClient(timeout=30) as client:
             response = await client.post(token_url, data=data)

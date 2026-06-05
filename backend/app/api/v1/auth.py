@@ -19,7 +19,7 @@ from app.core.security import (
 from app.db.session import get_session
 from app.repositories.identity import OAuthRepository, TenantRepository, UserRepository
 from app.schemas.auth import LoginUrlOut, MeOut
-from app.services.microsoft import GraphService, LOGIN_SCOPES, MicrosoftOAuthService
+from app.services.microsoft import GraphService, MicrosoftOAuthService
 from app.tasks.sync import sync_tenant
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -69,7 +69,7 @@ async def callback(
         tenant.id, oid, email, claims.get("name") or claims.get("preferred_username")
     )
     await OAuthRepository(session).upsert_refresh_token(
-        tenant.id, user.id, encrypt_secret(tokens["refresh_token"]), LOGIN_SCOPES
+        tenant.id, user.id, encrypt_secret(tokens["refresh_token"]), oauth.login_scopes(requested_tenant)
     )
     await session.commit()
     sync_tenant.delay(str(tenant.id))
