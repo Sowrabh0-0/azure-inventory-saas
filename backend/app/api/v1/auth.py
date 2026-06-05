@@ -26,13 +26,17 @@ oauth = MicrosoftOAuthService()
 
 
 @router.get("/login", response_model=LoginUrlOut)
-async def login(response: Response) -> LoginUrlOut:
+async def login(response: Response, tenant: str | None = Query(default=None)) -> LoginUrlOut:
     state = secrets.token_urlsafe(32)
     verifier = secrets.token_urlsafe(64)
     challenge = base64.urlsafe_b64encode(hashlib.sha256(verifier.encode()).digest()).rstrip(b"=").decode()
     response.set_cookie("oauth_state", state, httponly=True, secure=settings.cookie_secure, samesite="lax")
     response.set_cookie("pkce_verifier", verifier, httponly=True, secure=settings.cookie_secure, samesite="lax")
-    return LoginUrlOut(authorization_url=oauth.authorization_url(state, challenge))
+    if tenant:
+        response.set_cookie("oauth_tenant", tenant, httponly=True, secure=settings.cookie_secure, samesite="lax")
+    else:
+        response.delete_cookie("oauth_tenant")
+    return LoginUrlOut(authorization_url=oauth.authorization_url(state, challenge, tenant))
 
 
 @router.get("/callback")
@@ -44,10 +48,11 @@ async def callback(
 ) -> RedirectResponse:
     expected_state = request.cookies.get("oauth_state")
     verifier = request.cookies.get("pkce_verifier")
+    requested_tenant = request.cookies.get("oauth_tenant")
     if not expected_state or expected_state != state or not verifier:
         raise HTTPException(status_code=401, detail="Invalid OAuth state")
 
-    tokens = await oauth.exchange_code(code, verifier)
+    tokens = await oauth.exchange_code(code, verifier, requested_tenant)
     if "id_token" not in tokens or "access_token" not in tokens or "refresh_token" not in tokens:
         raise HTTPException(status_code=401, detail="Microsoft did not return required tokens")
     claims = await validate_microsoft_jwt(tokens["id_token"])
@@ -87,6 +92,7 @@ async def callback(
     )
     response.delete_cookie("oauth_state")
     response.delete_cookie("pkce_verifier")
+    response.delete_cookie("oauth_tenant")
     return response
 
 

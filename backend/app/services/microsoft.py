@@ -19,7 +19,13 @@ ARM_SCOPES = ["https://management.azure.com//user_impersonation"]
 
 
 class MicrosoftOAuthService:
-    def authorization_url(self, state: str, code_challenge: str) -> str:
+    def authority_for_tenant(self, tenant_id: str | None = None) -> str:
+        if tenant_id:
+            return f"https://login.microsoftonline.com/{tenant_id}"
+        return settings.microsoft_authority
+
+    def authorization_url(self, state: str, code_challenge: str, tenant_id: str | None = None) -> str:
+        authority = self.authority_for_tenant(tenant_id)
         query = urlencode(
             {
                 "client_id": settings.microsoft_client_id,
@@ -33,10 +39,10 @@ class MicrosoftOAuthService:
                 "prompt": "select_account",
             }
         )
-        return f"{settings.microsoft_authority}/oauth2/v2.0/authorize?{query}"
+        return f"{authority}/oauth2/v2.0/authorize?{query}"
 
-    async def exchange_code(self, code: str, code_verifier: str) -> dict:
-        token_url = f"{settings.microsoft_authority}/oauth2/v2.0/token"
+    async def exchange_code(self, code: str, code_verifier: str, tenant_id: str | None = None) -> dict:
+        token_url = f"{self.authority_for_tenant(tenant_id)}/oauth2/v2.0/token"
         data = {
             "client_id": settings.microsoft_client_id,
             "client_secret": settings.microsoft_client_secret,

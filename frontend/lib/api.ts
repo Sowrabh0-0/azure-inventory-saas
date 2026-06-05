@@ -52,8 +52,9 @@ export async function apiGet<T>(path: string): Promise<T> {
   return response.json() as Promise<T>;
 }
 
-export async function startLogin(): Promise<void> {
-  const response = await apiGet<{ authorization_url: string }>("/auth/login");
+export async function startLogin(tenantId?: string): Promise<void> {
+  const path = tenantId ? `/auth/login?tenant=${encodeURIComponent(tenantId)}` : "/auth/login";
+  const response = await apiGet<{ authorization_url: string }>(path);
   window.location.assign(response.authorization_url);
 }
 
