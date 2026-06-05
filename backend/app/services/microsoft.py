@@ -72,7 +72,7 @@ class GraphService:
                 f"{settings.graph_base_url}/organization",
                 headers={"Authorization": f"Bearer {access_token}"},
             )
-            if response.status_code in {401, 403}:
+            if response.status_code in {400, 401, 403}:
                 return {}
             response.raise_for_status()
             data = response.json()
