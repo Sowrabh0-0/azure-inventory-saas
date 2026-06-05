@@ -54,11 +54,11 @@ async def validate_microsoft_jwt(access_token: str) -> dict[str, Any]:
     try:
         header = jwt.get_unverified_header(access_token)
         unverified = jwt.decode(access_token, options={"verify_signature": False})
-        tenant_id = unverified.get("tid")
-        if not tenant_id:
-            raise HTTPException(status_code=401, detail="Token tenant is missing")
-        issuer = f"https://login.microsoftonline.com/{tenant_id}/v2.0"
-        jwks_url = f"{issuer}/discovery/v2.0/keys"
+        issuer = unverified.get("iss")
+        tenant_id = unverified.get("tid") or "consumers"
+        if not issuer or not issuer.startswith("https://login.microsoftonline.com/"):
+            raise HTTPException(status_code=401, detail="Token issuer is not supported")
+        jwks_url = "https://login.microsoftonline.com/common/discovery/v2.0/keys"
         jwk_client = PyJWKClient(jwks_url)
         signing_key = jwk_client.get_signing_key(header["kid"]).key
         claims = jwt.decode(
@@ -71,9 +71,10 @@ async def validate_microsoft_jwt(access_token: str) -> dict[str, Any]:
     except jwt.PyJWTError as exc:
         raise HTTPException(status_code=401, detail="Invalid Microsoft token") from exc
 
-    required = {"tid", "oid"}
-    if not required.issubset(claims):
-        raise HTTPException(status_code=401, detail="Required claims are missing")
+    claims["tid"] = claims.get("tid") or tenant_id
+    claims["oid"] = claims.get("oid") or claims.get("sub")
+    if not claims.get("oid"):
+        raise HTTPException(status_code=401, detail="Required subject claim is missing")
     return claims
 
 
@@ -102,4 +103,3 @@ async def fetch_json_with_bearer(url: str, token: str) -> dict[str, Any]:
         response = await client.get(url, headers={"Authorization": f"Bearer {token}"})
         response.raise_for_status()
         return response.json()
-
