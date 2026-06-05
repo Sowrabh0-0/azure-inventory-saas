@@ -1,0 +1,6 @@
+
+1. How azure AD Connect Authenticating on Prem Users
+2. What is Mean by PSH (password has syncron) how it is going to Authenticating on prem, 
+    how it is going to syn identity 
+3. what is mean by hash representation
+4. what is mean PTA (pass through authentication) how is it gonna validate azure on prem ACTIVE Directory 

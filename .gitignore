@@ -1,0 +1,16 @@
+.env
+.secrets/
+*.tfvars
+!.tfvars.example
+node_modules/
+.next/
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+.terraform/
+terraform.tfstate
+terraform.tfstate.backup
+*.tfstate
+*.tfstate.*
+dist/
+build/
