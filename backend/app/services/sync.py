@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.security import decrypt_secret
 from app.models.identity import OAuthConnection
 from app.repositories.azure import AzureInventoryRepository
-from app.services.microsoft import AzureArmService, MicrosoftOAuthService
+from app.services.microsoft import ARM_SCOPES, AzureArmService, MicrosoftOAuthService
 
 
 class InventorySyncService:
@@ -25,7 +25,7 @@ class InventorySyncService:
         if connection is None:
             return
         refresh_token = decrypt_secret(connection.encrypted_refresh_token)
-        tokens = await self.oauth.refresh_access_token(refresh_token)
+        tokens = await self.oauth.refresh_access_token(refresh_token, ARM_SCOPES)
         access_token = tokens["access_token"]
         if tokens.get("refresh_token"):
             connection.encrypted_refresh_token = tokens["refresh_token"]
@@ -35,4 +35,3 @@ class InventorySyncService:
             for resource in await self.arm.resources(access_token, subscription.subscription_id):
                 await self.repo.upsert_resource(tenant_id, subscription.id, resource)
         await self.session.commit()
-

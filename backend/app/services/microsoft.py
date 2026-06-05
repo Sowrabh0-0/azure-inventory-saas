@@ -12,8 +12,9 @@ LOGIN_SCOPES = [
     "email",
     "offline_access",
     "User.Read",
-    "https://management.azure.com//user_impersonation",
 ]
+
+ARM_SCOPES = ["https://management.azure.com/user_impersonation"]
 
 
 class MicrosoftOAuthService:
@@ -49,14 +50,14 @@ class MicrosoftOAuthService:
             response.raise_for_status()
             return response.json()
 
-    async def refresh_access_token(self, refresh_token: str) -> dict:
+    async def refresh_access_token(self, refresh_token: str, scopes: list[str] | None = None) -> dict:
         token_url = f"{settings.microsoft_authority}/oauth2/v2.0/token"
         data = {
             "client_id": settings.microsoft_client_id,
             "client_secret": settings.microsoft_client_secret,
             "grant_type": "refresh_token",
             "refresh_token": refresh_token,
-            "scope": " ".join(LOGIN_SCOPES),
+            "scope": " ".join(scopes or LOGIN_SCOPES),
         }
         async with httpx.AsyncClient(timeout=30) as client:
             response = await client.post(token_url, data=data)
