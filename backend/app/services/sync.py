@@ -34,7 +34,11 @@ class InventorySyncService:
             return
         refresh_token = decrypt_secret(connection.encrypted_refresh_token)
         try:
-            tokens = await self.oauth.refresh_access_token(refresh_token, ARM_SCOPES)
+        tokens = await self.oauth.refresh_access_token(
+            refresh_token,
+            ARM_SCOPES,
+            tenant_id=str(tenant_id),
+        )
         except HTTPException as exc:
             logger.error("ARM token refresh failed for tenant %s: %s", tenant_id, exc.detail)
             return
